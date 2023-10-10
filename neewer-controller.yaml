@@ -1,0 +1,229 @@
+# These substitutions allow the end user to override certain values
+substitutions:
+  name: "neewer-controller"
+  
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+  level: INFO
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+web_server:
+  port: 80
+
+esp32_improv:
+  authorizer: none
+
+improv_serial:
+  next_url: http://{{ip_address}}
+
+wifi:
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    password: "BTOhvq651el1"
+
+captive_portal:
+
+external_components:
+  - source: github://DanielBaulig/esphome@webserver-select-options
+    components:
+      - web_server
+  - source: github://litui/esphome-components@v1.0.0
+    components: [ neewerlight ]
+
+globals:
+  - id: paired_mac_address_store
+    type: ESPPreferenceObject
+
+dashboard_import:
+  package_import_url: github://DanielBaulig/neewer-controller/neewer-controller.yaml
+  import_full_config: false 
+
+esphome:
+  name: "${name}"
+  name_add_mac_suffix: true
+
+  project:
+    name: esphome.neewer-controller
+    version: "1.0"
+
+  on_boot: 
+    then: 
+      - lambda: |-
+          // ble tracker will start off scanning
+          id(scanning).publish_state(true);
+          // We don't want to connect to default mac address 00:00:00:00:00:00
+          id(nw660_ble_client).disconnect();
+
+          // Get previously paired mac address
+          id(paired_mac_address_store) = global_preferences->make_preference<uint64_t>(12345678);
+          uint64_t mac_address_raw = 0;
+          if (!id(paired_mac_address_store).load(&mac_address_raw) || !mac_address_raw) {
+            return;
+          }
+
+          // Reconnect to previously paired mac address
+          auto mac_address_s = str_snprintf("%02X:%02X:%02X:%02X:%02X:%02X", 17, (uint8_t) (mac_address_raw >> 40) & 0xff,
+              (uint8_t) (mac_address_raw >> 32) & 0xff, (uint8_t) (mac_address_raw >> 24) & 0xff,
+              (uint8_t) (mac_address_raw >> 16) & 0xff, (uint8_t) (mac_address_raw >> 8) & 0xff,
+              (uint8_t) (mac_address_raw >> 0) & 0xff);
+
+          auto select = id(mac_select);
+          std::vector<std::string> options = {"None", mac_address_s};
+          select->traits.set_options(options);
+          select->publish_state(mac_address_s);
+    
+esp32_ble_tracker:
+  id: ble_tracker
+  on_scan_end:
+    then:
+      - lambda: |-
+          id(scanning).publish_state(false);
+  on_ble_advertise:
+    then:
+      - lambda: |-
+            auto device = x;
+
+            if (device.get_name() != "NEEWER-RGB660") {
+              return;
+            }
+
+            ESP_LOGD(
+              "neewer", 
+              "Found bluetooth device identifying as new light %s (MAC: %s, RSSI: %d)", 
+              device.get_name().c_str(), 
+              device.address_str().c_str(), 
+              device.get_rssi()
+            );
+            std::string s = device.address_str();
+            auto select = id(mac_select);
+
+            if (select->has_option(s)) {
+              return;
+            }
+
+            ESP_LOGI(
+              "neewer", 
+              "Adding new neewer light %s (MAC: %s, RSSI: %d) to address list", 
+              device.get_name().c_str(), 
+              device.address_str().c_str(), 
+              device.get_rssi()
+            );
+            auto v = select->traits.get_options();
+            v.push_back(device.address_str());
+            select->traits.set_options(v);
+
+            if (!id(closest_rssi).has_state() || device.get_rssi() > id(closest_rssi).state) {
+              id(closest_address).publish_state(device.address_str());
+              id(closest_rssi).publish_state(device.get_rssi());
+            }    
+        
+select:
+  - platform: template
+    optimistic: true
+    options:
+      - None
+    id: mac_select
+    name: Paired device
+    
+    on_value:
+      then:
+        - lambda: |-
+            auto ble_client = id(nw660_ble_client);
+            std::string address_s = x;
+            uint64_t address_raw = 0;
+
+            if (address_s != "None") {
+              address_s.erase(std::remove(address_s.begin(), address_s.end(), ':'), address_s.end());
+              optional<uint64_t> address_parsed = parse_hex<uint64_t>(address_s);
+              ESP_LOGD("neewer", "Changing BLE client address: %s", x.c_str());
+              if (!address_parsed.has_value()) {
+                ESP_LOGW("neewer", "Invalid BLE client address: %s", x.c_str());
+                return;
+              }
+              address_raw = address_parsed.value();  
+            }
+            
+            ble_client->disconnect();
+            ble_client->set_address(address_raw);
+            id(paired_mac_address_store).save(&address_raw);
+            if (address_raw) {
+              ble_client->connect();
+            }     
+    
+ble_client:
+- mac_address: 00:00:00:00:00:00
+  id: nw660_ble_client
+  on_connect:
+    then:
+      - lambda: |-
+          id(ble_tracker)->stop_scan();
+
+binary_sensor:
+  - platform: template
+    name: Paired
+    id: paired
+    lambda: |-
+        return id(mac_select).state != "None";
+  - platform: template
+    name: Connected
+    id: connected
+    lambda: |-
+        return id(nw660_ble_client).connected();
+  - platform: template
+    name: Scanning
+    id: scanning
+
+button:
+  - platform: template
+    name: Reset
+    on_press:
+        then:
+          - lambda: |-
+              ESP_LOGI("neewer", "Resetting paired device and restarting...");
+              id(mac_select).publish_state("None");
+              App.safe_reboot();
+  - platform: template
+    name: Pair with closest device
+    on_press:
+      then:
+        - lambda: |-
+            id(mac_select).publish_state(id(closest_address).state);
+  - platform: template
+    name: Rescan devices
+    id: scan
+    on_press:
+      then:
+        - lambda: |-
+            auto select = id(mac_select);
+            auto mac_address = select->state;
+            std::vector<std::string> options = {"None"};
+            if (mac_address != "None") {
+              options.push_back(mac_address);
+            }
+            select->traits.set_options(options);
+            id(ble_tracker)->start_scan();
+            id(scanning).publish_state(true);
+
+text_sensor:
+  - platform: template
+    id: closest_address
+
+sensor:
+  - platform: template
+    id: closest_rssi
+
+light:
+- platform: neewerlight
+  name: "Neewer 660 RGB Light"
+  ble_client_id: nw660_ble_client
+  gamma_correct: 1.0
+  default_transition_length: 0s
