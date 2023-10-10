@@ -170,9 +170,20 @@ ble_client:
       - lambda: |-
           id(ble_tracker)->stop_scan();
 
+interval:
+  - interval: 10s
+    then:
+      - lambda: |-
+          auto ble_client = id(nw660_ble_client);
+          // Attempt to reconnect to paired light if we have lost connection
+          if (!ble_client->connected() && id(paired).state) {
+            ble_client->connect();
+          }
+
 binary_sensor:
   - platform: template
     entity_category: "diagnostic"
+    id: paired
     name: Paired
     lambda: |-
         return id(mac_select).state != "None";
