@@ -33,7 +33,7 @@ a Neewer 660RGB light to your ESP32, follow the instructions under "Pairing".
 
 ### Flash from binary (ESPHome optional)
 
-1. Download the (most recent build)[https://github.com/DanielBaulig/neewer-controller/releases/latest/download/neewer-controller-factory.bin] 
+1. Download the [most recent build](https://github.com/DanielBaulig/neewer-controller/releases/latest/download/neewer-controller-factory.bin)
    of the firmware (Wemos D1 Mini only). 
 2. Visit the [ESPHome Web Tools website](https://web.esphome.io/). 
 3. Plug your ESP32 device into your computer.
