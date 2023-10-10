@@ -3,7 +3,7 @@ substitutions:
   name: "neewer-controller"
   
 esp32:
-  board: esp32dev
+  board: wemos_d1_mini32
   framework:
     type: arduino
 
@@ -18,9 +18,6 @@ ota:
 
 web_server:
   port: 80
-
-esp32_improv:
-  authorizer: none
 
 improv_serial:
   next_url: http://{{ip_address}}
@@ -42,6 +39,12 @@ external_components:
 globals:
   - id: paired_mac_address_store
     type: ESPPreferenceObject
+  - id: closest_rssi
+    type: int8_t
+    initial_value: "-127"
+  - id: closest_address
+    type: std::string
+    initial_value: ""
 
 dashboard_import:
   package_import_url: github://DanielBaulig/neewer-controller/neewer-controller.yaml
@@ -60,8 +63,6 @@ esphome:
       - lambda: |-
           // ble tracker will start off scanning
           id(scanning).publish_state(true);
-          // We don't want to connect to default mac address 00:00:00:00:00:00
-          id(nw660_ble_client).disconnect();
 
           // Get previously paired mac address
           id(paired_mac_address_store) = global_preferences->make_preference<uint64_t>(12345678);
@@ -121,14 +122,15 @@ esp32_ble_tracker:
             v.push_back(device.address_str());
             select->traits.set_options(v);
 
-            if (!id(closest_rssi).has_state() || device.get_rssi() > id(closest_rssi).state) {
-              id(closest_address).publish_state(device.address_str());
-              id(closest_rssi).publish_state(device.get_rssi());
+            if (device.get_rssi() > id(closest_rssi)) {
+              id(closest_address) = device.address_str();
+              id(closest_rssi) = device.get_rssi();
             }    
         
 select:
   - platform: template
     optimistic: true
+    disabled_by_default: true
     options:
       - None
     id: mac_select
@@ -170,21 +172,21 @@ ble_client:
 binary_sensor:
   - platform: template
     name: Paired
-    id: paired
     lambda: |-
         return id(mac_select).state != "None";
   - platform: template
     name: Connected
-    id: connected
     lambda: |-
         return id(nw660_ble_client).connected();
   - platform: template
     name: Scanning
     id: scanning
+    disabled_by_default: true
 
 button:
   - platform: template
     name: Reset
+    disabled_by_default: true
     on_press:
         then:
           - lambda: |-
@@ -193,13 +195,14 @@ button:
               App.safe_reboot();
   - platform: template
     name: Pair with closest device
+    id: pair_closest
     on_press:
       then:
         - lambda: |-
-            id(mac_select).publish_state(id(closest_address).state);
+            id(mac_select).publish_state(id(closest_address));
   - platform: template
+    disabled_by_default: true
     name: Rescan devices
-    id: scan
     on_press:
       then:
         - lambda: |-
@@ -212,14 +215,6 @@ button:
             select->traits.set_options(options);
             id(ble_tracker)->start_scan();
             id(scanning).publish_state(true);
-
-text_sensor:
-  - platform: template
-    id: closest_address
-
-sensor:
-  - platform: template
-    id: closest_rssi
 
 light:
 - platform: neewerlight
