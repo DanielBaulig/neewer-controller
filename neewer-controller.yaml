@@ -134,6 +134,7 @@ select:
     options:
       - None
     id: mac_select
+    entity_category: "config"
     name: Paired device
     
     on_value:
@@ -171,20 +172,24 @@ ble_client:
 
 binary_sensor:
   - platform: template
+    entity_category: "diagnostic"
     name: Paired
     lambda: |-
         return id(mac_select).state != "None";
   - platform: template
+    entity_category: "diagnostic"
     name: Connected
     lambda: |-
         return id(nw660_ble_client).connected();
   - platform: template
+    entity_category: "diagnostic"
     name: Scanning
     id: scanning
     disabled_by_default: true
 
 button:
   - platform: template
+    entity_category: "config"
     name: Reset
     disabled_by_default: true
     on_press:
@@ -194,6 +199,7 @@ button:
               id(mac_select).publish_state("None");
               App.safe_reboot();
   - platform: template
+    entity_category: "config"
     name: Pair with closest device
     id: pair_closest
     on_press:
@@ -202,6 +208,7 @@ button:
             id(mac_select).publish_state(id(closest_address));
   - platform: template
     disabled_by_default: true
+    entity_category: "config"
     name: Rescan devices
     on_press:
       then:
