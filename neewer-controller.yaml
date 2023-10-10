@@ -52,7 +52,7 @@ esphome:
   name_add_mac_suffix: true
 
   project:
-    name: esphome.neewer-controller
+    name: DanielBaulig/neewer-controller
     version: "1.0"
 
   on_boot: 
