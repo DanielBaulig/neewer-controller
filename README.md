@@ -1,5 +1,16 @@
 # Neewer RGB660 Wifi Light Controller
 
+This custom ESPHome firmware was designed to run my Neewer RGB660 WIFI Controller. It's a 
+small ESP32 based gizmo that can be mounted directly to the back of your Neewer RGB660 lights 
+to create a stable Bluetooth connection and make the light available over WIFI. It gets
+powered directly from the light. Once installed it just lives with the light, whereever it
+goes.
+
+If you are interested in building one for yourself, I've provided the [instructions on my
+blog Rarely Unplugged](https://www.rarelyunplugged.com/posts/neewer-660-rgb-wifi-controller/).
+I'm also considering selling these devices for a fair price. So if you are interested in
+buying one, let me know, too.
+
 ## Flashing
 You can flash the firmware on your ESP32 to turn it into a Neewer 660RGB
 controller by either building the firmware from source or by uploading a
