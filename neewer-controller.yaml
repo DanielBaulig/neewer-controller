@@ -25,14 +25,11 @@ improv_serial:
 wifi:
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
-    password: "BTOhvq651el1"
+    password: "neewer-wifi-controller"
 
 captive_portal:
 
 external_components:
-  - source: github://DanielBaulig/esphome@webserver-select-options
-    components:
-      - web_server
   - source: github://litui/esphome-components@v1.0.0
     components: [ neewerlight ]
 
@@ -56,7 +53,7 @@ esphome:
 
   project:
     name: DanielBaulig.neewer-controller
-    version: "1.0"
+    version: "1.1"
 
   on_boot: 
     then: 
@@ -99,7 +96,7 @@ esp32_ble_tracker:
 
             ESP_LOGD(
               "neewer", 
-              "Found bluetooth device identifying as new light %s (MAC: %s, RSSI: %d)", 
+              "Found bluetooth device identifying as neewer light %s (MAC: %s, RSSI: %d)", 
               device.get_name().c_str(), 
               device.address_str().c_str(), 
               device.get_rssi()
@@ -155,30 +152,22 @@ select:
               address_raw = address_parsed.value();  
             }
             
-            ble_client->disconnect();
+            if (ble_client->connected()) {
+              ble_client->disconnect();
+            }
             ble_client->set_address(address_raw);
             id(paired_mac_address_store).save(&address_raw);
             if (address_raw) {
-              ble_client->connect();
+              ESP_LOGI("neewer", "Connecting to BLE client", x.c_str());
             }     
     
 ble_client:
-- mac_address: 00:00:00:00:00:00
-  id: nw660_ble_client
-  on_connect:
-    then:
-      - lambda: |-
-          id(ble_tracker)->stop_scan();
-
-interval:
-  - interval: 10s
-    then:
-      - lambda: |-
-          auto ble_client = id(nw660_ble_client);
-          // Attempt to reconnect to paired light if we have lost connection
-          if (!ble_client->connected() && id(paired).state) {
-            ble_client->connect();
-          }
+  - mac_address: 00:00:00:00:00:00
+    id: nw660_ble_client
+    on_connect:
+      then:
+        - lambda: |-
+            id(ble_tracker)->stop_scan();
 
 binary_sensor:
   - platform: template
