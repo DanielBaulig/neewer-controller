@@ -160,6 +160,17 @@ select:
             if (address_raw) {
               ESP_LOGI("neewer", "Connecting to BLE client", x.c_str());
             }     
+
+interval:
+  - interval: 5s
+    then:
+      - lambda: |-
+          auto ble_client = id(nw660_ble_client);
+          // Attempt to reconnect to paired light if we have lost connection
+          if (!ble_client->connected() && id(paired).state && !id(scanning).state) {
+            id(ble_tracker)->start_scan();
+            id(scanning).publish_state(true);
+          }
     
 ble_client:
   - mac_address: 00:00:00:00:00:00
