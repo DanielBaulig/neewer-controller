@@ -90,7 +90,14 @@ esp32_ble_tracker:
       - lambda: |-
             auto device = x;
 
-            if (device.get_name() != "NEEWER-RGB660") {
+            if (device.get_name().rfind("NEEWER-", 0) != 0) {
+              ESP_LOGD(
+                "neewer",
+                 "Disregarded bluetooth device identifying as %s (Mac: %s, RSSI: %d)",
+                 device.get_name().c_str(),
+                 device.address_str().c_str(),
+                 device.get_rssi()
+              );
               return;
             }
 
