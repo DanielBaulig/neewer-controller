@@ -1,7 +1,7 @@
 # These substitutions allow the end user to override certain values
 substitutions:
   name: "neewer-controller"
-  
+
 esp32:
   board: wemos_d1_mini32
   framework:
@@ -45,7 +45,7 @@ globals:
 
 dashboard_import:
   package_import_url: github://DanielBaulig/neewer-controller/neewer-controller.yaml
-  import_full_config: false 
+  import_full_config: false
 
 esphome:
   name: "${name}"
@@ -55,8 +55,8 @@ esphome:
     name: DanielBaulig.neewer-controller
     version: "1.1"
 
-  on_boot: 
-    then: 
+  on_boot:
+    then:
       - lambda: |-
           // ble tracker will start off scanning
           id(scanning).publish_state(true);
@@ -78,7 +78,7 @@ esphome:
           std::vector<std::string> options = {"None", mac_address_s};
           select->traits.set_options(options);
           select->publish_state(mac_address_s);
-    
+
 esp32_ble_tracker:
   id: ble_tracker
   on_scan_end:
@@ -95,10 +95,10 @@ esp32_ble_tracker:
             }
 
             ESP_LOGD(
-              "neewer", 
-              "Found bluetooth device identifying as neewer light %s (MAC: %s, RSSI: %d)", 
-              device.get_name().c_str(), 
-              device.address_str().c_str(), 
+              "neewer",
+              "Found bluetooth device identifying as neewer light %s (MAC: %s, RSSI: %d)",
+              device.get_name().c_str(),
+              device.address_str().c_str(),
               device.get_rssi()
             );
             std::string s = device.address_str();
@@ -109,10 +109,10 @@ esp32_ble_tracker:
             }
 
             ESP_LOGI(
-              "neewer", 
-              "Adding new neewer light %s (MAC: %s, RSSI: %d) to address list", 
-              device.get_name().c_str(), 
-              device.address_str().c_str(), 
+              "neewer",
+              "Adding new neewer light %s (MAC: %s, RSSI: %d) to address list",
+              device.get_name().c_str(),
+              device.address_str().c_str(),
               device.get_rssi()
             );
             auto v = select->traits.get_options();
@@ -122,8 +122,8 @@ esp32_ble_tracker:
             if (device.get_rssi() > id(closest_rssi)) {
               id(closest_address) = device.address_str();
               id(closest_rssi) = device.get_rssi();
-            }    
-        
+            }
+
 select:
   - platform: template
     optimistic: true
@@ -133,7 +133,7 @@ select:
     id: mac_select
     entity_category: "config"
     name: Paired device
-    
+
     on_value:
       then:
         - lambda: |-
@@ -149,9 +149,9 @@ select:
                 ESP_LOGW("neewer", "Invalid BLE client address: %s", x.c_str());
                 return;
               }
-              address_raw = address_parsed.value();  
+              address_raw = address_parsed.value();
             }
-            
+
             if (ble_client->connected()) {
               ble_client->disconnect();
             }
@@ -159,7 +159,7 @@ select:
             id(paired_mac_address_store).save(&address_raw);
             if (address_raw) {
               ESP_LOGI("neewer", "Connecting to BLE client", x.c_str());
-            }     
+            }
 
 interval:
   - interval: 5s
@@ -171,7 +171,7 @@ interval:
             id(ble_tracker)->start_scan();
             id(scanning).publish_state(true);
           }
-    
+
 ble_client:
   - mac_address: 00:00:00:00:00:00
     id: nw660_ble_client
