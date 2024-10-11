@@ -10,6 +10,9 @@ esp32:
 # Enable logging
 logger:
   level: INFO
+  #  logs:
+  #    esp32_ble: DEBUG
+  #    json: DEBUG
 
 # Enable Home Assistant API
 api:
@@ -53,7 +56,7 @@ esphome:
 
   project:
     name: DanielBaulig.neewer-controller
-    version: "1.1"
+    version: "0.2.2"
 
   on_boot:
     then:
@@ -90,13 +93,20 @@ esp32_ble_tracker:
       - lambda: |-
             auto device = x;
 
-            if (device.get_name() != "NEEWER-RGB660") {
+            if (device.get_name().rfind("NEEWER-", 0) != 0) {
+              ESP_LOGV(
+                "neewer",
+                "Saw bluetooth device identifying as \"%s\" (MAC: %s, RSSI: %d)",
+                device.get_name().c_str(),
+                device.address_str().c_str(),
+                device.get_rssi()
+              );
               return;
             }
 
             ESP_LOGD(
               "neewer",
-              "Found bluetooth device identifying as neewer light %s (MAC: %s, RSSI: %d)",
+              "Found bluetooth device identifying as neewer device \"%s\" (MAC: %s, RSSI: %d)",
               device.get_name().c_str(),
               device.address_str().c_str(),
               device.get_rssi()
@@ -108,9 +118,17 @@ esp32_ble_tracker:
               return;
             }
 
+            if (device.get_name() != "NEEWER-RGB660") {
+              ESP_LOGW(
+                "neewer",
+                "Neewer device \"%s\" does not identify as NEEWER-RGB660, is not officially supported and may not work as expected",
+                device.get_name().c_str()
+              );
+            }
+
             ESP_LOGI(
               "neewer",
-              "Adding new neewer light %s (MAC: %s, RSSI: %d) to address list",
+              "Adding new neewer device \"%s\" (MAC: %s, RSSI: %d) to address list",
               device.get_name().c_str(),
               device.address_str().c_str(),
               device.get_rssi()
@@ -123,6 +141,7 @@ esp32_ble_tracker:
               id(closest_address) = device.address_str();
               id(closest_rssi) = device.get_rssi();
             }
+
 
 select:
   - platform: template
@@ -235,8 +254,8 @@ button:
             id(scanning).publish_state(true);
 
 light:
-- platform: neewerlight
-  name: "Neewer 660 RGB Light"
-  ble_client_id: nw660_ble_client
-  gamma_correct: 1.0
-  default_transition_length: 0s
+  - platform: neewerlight
+    name: "Neewer 660 RGB Light"
+    ble_client_id: nw660_ble_client
+    gamma_correct: 1.0
+    default_transition_length: 0s
