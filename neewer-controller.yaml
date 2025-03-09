@@ -33,7 +33,7 @@ wifi:
 captive_portal:
 
 external_components:
-  - source: github://litui/esphome-components@v1.0.0
+  - source: github://DanielBaulig/litiu-esphome-components
     components: [ neewerlight ]
 
 globals:
@@ -56,7 +56,7 @@ esphome:
 
   project:
     name: DanielBaulig.neewer-controller
-    version: "0.2.2"
+    version: "0.2.3"
 
   on_boot:
     then:
