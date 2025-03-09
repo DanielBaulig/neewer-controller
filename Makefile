@@ -11,7 +11,7 @@ bin/:
 
 $(BIN): $(SRC) bin/
 	docker run --rm --privileged -v "${PWD}":/config -it esphome/esphome compile $<
-	cp .esphome/build/$(PROJECT)/.pioenvs/$(PROJECT)/firmware-factory.bin $@
+	cp .esphome/build/$(PROJECT)/.pioenvs/$(PROJECT)/firmware.factory.bin $@
 
 clean: $(SRC)
 	docker run --rm --privileged -v "${PWD}":/config -it esphome/esphome clean $<
