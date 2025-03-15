@@ -34,7 +34,7 @@ wifi:
 captive_portal:
 
 external_components:
-  - source: github://DanielBaulig/litiu-esphome-components
+  - source: github://litui/esphome-components@v1.0.1
     components: [ neewerlight ]
 
 globals:
